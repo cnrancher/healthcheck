@@ -117,7 +117,11 @@ func (m *Monitor) processStat(stat haproxy.Stat) {
 	if previousStatus != currentStatus {
 		err := m.reportStatus(serverName, currentStatus)
 		if err != nil {
-			log.Errorf("Failed to report status %s=%s: %v", serverName, currentStatus, err)
+			if apiError, ok := err.(*client.ApiError); ok && apiError.StatusCode == 403 {
+				log.Warnf("Got 403 response for healthcheckUuid %s as cattle might delete the related records", serverName)
+			} else {
+				log.Errorf("Failed to report status %s=%s: %v", serverName, currentStatus, err)
+			}
 			update = false
 		}
 	}
@@ -138,6 +142,6 @@ func (m *Monitor) reportStatus(serverName, currentStatus string) error {
 		return err
 	}
 
-	log.Infof("%s=%s", serverName, currentStatus)
+	log.Infof("Got reportStatus from cattle: %s=%s", serverName, currentStatus)
 	return nil
 }
